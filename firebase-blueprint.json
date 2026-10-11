@@ -1,0 +1,51 @@
+{
+  "entities": {
+    "Task": {
+      "title": "Task",
+      "description": "A task item in the task manager",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Task title",
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the task",
+          "maxLength": 1000
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["low", "medium", "high"],
+          "description": "Task priority level"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "completed"],
+          "description": "Task completion status"
+        },
+        "dueDate": {
+          "type": "string",
+          "description": "Due date in YYYY-MM-DD format",
+          "maxLength": 20
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of creation"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last update"
+        }
+      },
+      "required": ["title", "priority", "status", "dueDate"]
+    }
+  },
+  "firestore": {
+    "/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Collection of tasks"
+    }
+  }
+}

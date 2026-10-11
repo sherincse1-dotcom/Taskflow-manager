@@ -1,0 +1,6 @@
+{
+  "name": "TaskFlow — Smart Task Manager",
+  "description": "A modern, full-stack task management dashboard with real-time tracking, priority levels, and persistent storage.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

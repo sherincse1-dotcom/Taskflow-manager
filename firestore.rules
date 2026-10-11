@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /tasks/{taskId} {
+      allow read: if true;
+      allow create: if request.resource.data.title is string &&
+                      request.resource.data.title.size() > 0 &&
+                      request.resource.data.title.size() <= 100 &&
+                      request.resource.data.priority in ['low', 'medium', 'high'] &&
+                      request.resource.data.status in ['pending', 'completed'];
+      allow update: if request.resource.data.title is string &&
+                      request.resource.data.title.size() > 0 &&
+                      request.resource.data.title.size() <= 100 &&
+                      request.resource.data.priority in ['low', 'medium', 'high'] &&
+                      request.resource.data.status in ['pending', 'completed'];
+      allow delete: if true;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
