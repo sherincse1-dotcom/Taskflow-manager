@@ -6,9 +6,10 @@ import {
   ArrowUpDown,
   RefreshCw,
 } from 'lucide-react';
-import { SortOption } from '../types';
+import { SortOption, TaskFilter } from '../types';
 
 interface HeaderProps {
+  currentFilter: TaskFilter;
   onOpenMobileSidebar: () => void;
   onOpenCreateModal: () => void;
   searchQuery: string;
@@ -19,7 +20,27 @@ interface HeaderProps {
   isLoading: boolean;
 }
 
+const filterDetails: Record<TaskFilter, { title: string; subtitle: string }> = {
+  all: {
+    title: 'All Tasks',
+    subtitle: 'Manage, organize, and prioritize your daily workflow',
+  },
+  pending: {
+    title: 'In Progress Tasks',
+    subtitle: 'Tasks currently underway and needing attention',
+  },
+  completed: {
+    title: 'Completed Tasks',
+    subtitle: 'Archive of finished and accomplished tasks',
+  },
+  'high-priority': {
+    title: 'High Priority Tasks',
+    subtitle: 'Critical tasks requiring immediate focus',
+  },
+};
+
 export const Header: React.FC<HeaderProps> = ({
+  currentFilter,
   onOpenMobileSidebar,
   onOpenCreateModal,
   searchQuery,
@@ -29,6 +50,8 @@ export const Header: React.FC<HeaderProps> = ({
   onRefresh,
   isLoading,
 }) => {
+  const currentDetail = filterDetails[currentFilter] || filterDetails.all;
+
   return (
     <header className="sticky top-0 z-20 bg-white/90 backdrop-blur-md border-b border-purple-100 px-4 sm:px-6 py-3.5">
       <div className="flex items-center justify-between gap-3">
@@ -36,14 +59,20 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center gap-3">
           <button
             onClick={onOpenMobileSidebar}
-            className="lg:hidden p-2 rounded-xl text-slate-600 hover:bg-purple-50 hover:text-purple-700 transition"
+            className="lg:hidden p-2 rounded-xl text-slate-600 hover:bg-purple-50 hover:text-purple-700 transition cursor-pointer"
             aria-label="Open sidebar menu"
           >
             <Menu className="w-5 h-5" />
           </button>
           <div className="hidden sm:block">
-            <h2 className="text-lg font-bold text-slate-900 tracking-tight">Dashboard</h2>
-            <p className="text-xs text-slate-500">Manage, organize, and prioritize your daily workflow</p>
+            <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium">
+              <span>TaskFlow</span>
+              <span>/</span>
+              <span className="text-purple-600 font-semibold">{currentDetail.title}</span>
+            </div>
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight leading-tight">
+              {currentDetail.title}
+            </h2>
           </div>
         </div>
 

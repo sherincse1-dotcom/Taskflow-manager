@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Sidebar,
 } from './components/Sidebar';
@@ -64,6 +64,15 @@ export default function App() {
   const [isSeeding, setIsSeeding] = useState(false);
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
 
+  const taskListRef = useRef<HTMLDivElement>(null);
+
+  const handleFilterSelect = (filter: TaskFilter) => {
+    setCurrentFilter(filter);
+    setTimeout(() => {
+      taskListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 40);
+  };
+
   // Toast notifications
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
@@ -99,14 +108,14 @@ export default function App() {
 
   // Filter & Search & Sort pipeline
   const filteredTasks = useMemo(() => {
+    const isHighPriority = (p?: string) => String(p || '').trim().toLowerCase() === 'high';
+
     return tasks
       .filter((task) => {
         // Filter tabs
-        if (currentFilter === 'pending' && task.status !== 'pending') return false;
+        if (currentFilter === 'pending' && task.status === 'completed') return false;
         if (currentFilter === 'completed' && task.status !== 'completed') return false;
-        if (currentFilter === 'high-priority') {
-          if (task.priority !== 'high' || task.status === 'completed') return false;
-        }
+        if (currentFilter === 'high-priority' && !isHighPriority(task.priority)) return false;
 
         // Search Query
         if (searchQuery.trim()) {
@@ -129,8 +138,10 @@ export default function App() {
           return (b.dueDate || '').localeCompare(a.dueDate || '');
         }
         if (sortOption === 'priority') {
-          const priorityWeights = { high: 3, medium: 2, low: 1 };
-          return (priorityWeights[b.priority] || 0) - (priorityWeights[a.priority] || 0);
+          const priorityWeights: Record<string, number> = { high: 3, medium: 2, low: 1 };
+          const pA = String(a.priority || '').trim().toLowerCase();
+          const pB = String(b.priority || '').trim().toLowerCase();
+          return (priorityWeights[pB] || 0) - (priorityWeights[pA] || 0);
         }
         return 0;
       });
@@ -140,18 +151,20 @@ export default function App() {
   const handleCreateOrUpdateTask = async (input: CreateTaskInput | UpdateTaskInput) => {
     try {
       if (taskToEdit) {
-        // Update
+        // Update existing task
         const updated = await updateTask(taskToEdit.id, input);
         setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
-        showToast('Task updated in Firestore successfully!', 'success');
+        showToast('Changes saved to Firestore successfully! ✅', 'success');
       } else {
-        // Create
+        // Create new task
         const created = await createTask(input as CreateTaskInput);
-        setTasks((prev) => [created, ...prev]);
-        showToast('New task saved to Firestore!', 'success');
+        setTasks((prev) => [created, ...prev.filter((t) => t.id !== created.id)]);
+        showToast('Task saved to Firestore successfully! ✅', 'success');
       }
+      // Re-sync with backend to ensure exact counts, sorting, and state from database
+      await loadData(false);
     } catch (err: any) {
-      showToast(err.message || 'Action failed', 'error');
+      showToast(err.message || 'Failed to save task to database', 'error');
       throw err;
     }
   };
@@ -201,7 +214,7 @@ export default function App() {
     <div className="min-h-screen bg-slate-50/70 text-slate-800 flex font-sans antialiased selection:bg-purple-200 selection:text-purple-900">
       {/* Toast Notification */}
       {toast && (
-        <div className="fixed bottom-5 right-5 z-50 animate-bounce duration-300">
+        <div className="fixed bottom-5 right-5 z-[70] animate-bounce duration-300">
           <div
             className={`flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-xl text-xs sm:text-sm font-semibold border ${
               toast.type === 'success'
@@ -226,7 +239,7 @@ export default function App() {
       {/* Sidebar Navigation */}
       <Sidebar
         currentFilter={currentFilter}
-        onSelectFilter={setCurrentFilter}
+        onSelectFilter={handleFilterSelect}
         tasks={tasks}
         isOpen={isMobileSidebarOpen}
         onClose={() => setIsMobileSidebarOpen(false)}
@@ -237,6 +250,7 @@ export default function App() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
         <Header
+          currentFilter={currentFilter}
           onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
           onOpenCreateModal={() => {
             setTaskToEdit(null);
@@ -255,10 +269,18 @@ export default function App() {
           <DbStatusBanner health={health} error={error} />
 
           {/* Metric Dashboard Cards */}
-          <StatCards tasks={tasks} />
+          <StatCards
+            tasks={tasks}
+            currentFilter={currentFilter}
+            onSelectFilter={handleFilterSelect}
+          />
 
           {/* Filter Bar and Title */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+          <div
+            ref={taskListRef}
+            id="task-list-section"
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 scroll-mt-24"
+          >
             <div>
               <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
                 <span>
@@ -281,8 +303,9 @@ export default function App() {
             {/* Quick Filter Pills */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
               <button
-                onClick={() => setCurrentFilter('all')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition shrink-0 ${
+                type="button"
+                onClick={() => handleFilterSelect('all')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition shrink-0 cursor-pointer ${
                   currentFilter === 'all'
                     ? 'bg-purple-600 text-white shadow-xs'
                     : 'bg-white text-slate-600 hover:bg-purple-50 border border-purple-100'
@@ -291,24 +314,37 @@ export default function App() {
                 All ({tasks.length})
               </button>
               <button
-                onClick={() => setCurrentFilter('pending')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition shrink-0 ${
+                type="button"
+                onClick={() => handleFilterSelect('pending')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition shrink-0 cursor-pointer ${
                   currentFilter === 'pending'
                     ? 'bg-amber-600 text-white shadow-xs'
                     : 'bg-white text-slate-600 hover:bg-amber-50 border border-slate-200'
                 }`}
               >
-                Pending ({tasks.filter((t) => t.status === 'pending').length})
+                Pending ({tasks.filter((t) => t.status !== 'completed').length})
               </button>
               <button
-                onClick={() => setCurrentFilter('completed')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition shrink-0 ${
+                type="button"
+                onClick={() => handleFilterSelect('completed')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition shrink-0 cursor-pointer ${
                   currentFilter === 'completed'
                     ? 'bg-emerald-600 text-white shadow-xs'
                     : 'bg-white text-slate-600 hover:bg-emerald-50 border border-slate-200'
                 }`}
               >
                 Completed ({tasks.filter((t) => t.status === 'completed').length})
+              </button>
+              <button
+                type="button"
+                onClick={() => handleFilterSelect('high-priority')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition shrink-0 cursor-pointer ${
+                  currentFilter === 'high-priority'
+                    ? 'bg-rose-600 text-white shadow-xs'
+                    : 'bg-white text-slate-600 hover:bg-rose-50 border border-slate-200'
+                }`}
+              >
+                High Priority ({tasks.filter((t) => String(t.priority || '').trim().toLowerCase() === 'high').length})
               </button>
             </div>
           </div>
@@ -352,6 +388,8 @@ export default function App() {
                   ? 'No completed tasks yet'
                   : currentFilter === 'pending'
                   ? 'All tasks are completed!'
+                  : currentFilter === 'high-priority'
+                  ? 'No high priority tasks'
                   : 'No tasks found'}
               </h3>
               <p className="text-xs sm:text-sm text-slate-500 mt-1.5 max-w-md mx-auto leading-relaxed">

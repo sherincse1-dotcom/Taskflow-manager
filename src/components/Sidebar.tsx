@@ -31,9 +31,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isSeeding,
 }) => {
   const totalCount = tasks.length;
-  const pendingCount = tasks.filter((t) => t.status === 'pending').length;
+  const pendingCount = tasks.filter((t) => t.status !== 'completed').length;
   const completedCount = tasks.filter((t) => t.status === 'completed').length;
-  const highPriorityCount = tasks.filter((t) => t.priority === 'high' && t.status === 'pending').length;
+  const highPriorityCount = tasks.filter((t) => String(t.priority || '').trim().toLowerCase() === 'high').length;
 
   const navItems = [
     {
@@ -106,13 +106,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
           return (
             <button
               key={item.id}
+              type="button"
               onClick={() => {
                 onSelectFilter(item.id);
-                onClose();
+                if (isOpen) {
+                  onClose();
+                }
               }}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-sm transition-all duration-150 ${
+              aria-current={isActive ? 'page' : undefined}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-sm transition-all duration-150 cursor-pointer ${
                 isActive
-                  ? 'bg-purple-600 text-white shadow-sm shadow-purple-300'
+                  ? 'bg-purple-600 text-white shadow-md shadow-purple-300/80 font-semibold ring-1 ring-purple-600'
                   : 'text-slate-600 hover:bg-purple-50/70 hover:text-purple-700'
               }`}
             >

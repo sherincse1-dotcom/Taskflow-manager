@@ -101,12 +101,15 @@ app.get('/api/tasks', async (_req: Request, res: Response) => {
     const tasks: Task[] = [];
     snapshot.forEach((docSnap) => {
       const data = docSnap.data();
+      const rawPriority = data.priority ? String(data.priority).trim().toLowerCase() : 'medium';
+      const parsedPriority = ['low', 'medium', 'high'].includes(rawPriority) ? rawPriority : 'medium';
+
       tasks.push({
         id: docSnap.id,
         title: data.title || '',
         description: data.description || '',
-        priority: data.priority || 'medium',
-        status: data.status || 'pending',
+        priority: parsedPriority as 'low' | 'medium' | 'high',
+        status: data.status === 'completed' ? 'completed' : 'pending',
         dueDate: data.dueDate || '',
         createdAt: data.createdAt || new Date().toISOString(),
         updatedAt: data.updatedAt || new Date().toISOString(),
@@ -185,7 +188,8 @@ app.post('/api/tasks', async (req: Request, res: Response) => {
     }
 
     const validPriorities = ['low', 'medium', 'high'];
-    const assignedPriority = validPriorities.includes(priority) ? priority : 'medium';
+    const normalizedPriority = typeof priority === 'string' ? priority.trim().toLowerCase() : 'medium';
+    const assignedPriority = validPriorities.includes(normalizedPriority) ? normalizedPriority : 'medium';
     const assignedStatus = status === 'completed' ? 'completed' : 'pending';
 
     const now = new Date().toISOString();
@@ -255,10 +259,11 @@ app.put('/api/tasks/:id', async (req: Request, res: Response) => {
     }
 
     if (priority !== undefined) {
-      if (!['low', 'medium', 'high'].includes(priority)) {
+      const normalizedPriority = typeof priority === 'string' ? priority.trim().toLowerCase() : '';
+      if (!['low', 'medium', 'high'].includes(normalizedPriority)) {
         return res.status(400).json({ success: false, message: 'Priority must be low, medium, or high.' });
       }
-      updatePayload.priority = priority;
+      updatePayload.priority = normalizedPriority;
     }
 
     if (status !== undefined) {

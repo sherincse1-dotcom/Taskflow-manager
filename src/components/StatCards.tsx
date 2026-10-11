@@ -1,19 +1,22 @@
 import React from 'react';
 import { CheckCircle2, Clock, ListTodo, TrendingUp } from 'lucide-react';
-import { Task } from '../types';
+import { Task, TaskFilter } from '../types';
 
 interface StatCardsProps {
   tasks: Task[];
+  currentFilter?: TaskFilter;
+  onSelectFilter?: (filter: TaskFilter) => void;
 }
 
-export const StatCards: React.FC<StatCardsProps> = ({ tasks }) => {
+export const StatCards: React.FC<StatCardsProps> = ({ tasks, currentFilter, onSelectFilter }) => {
   const total = tasks.length;
   const completed = tasks.filter((t) => t.status === 'completed').length;
-  const pending = tasks.filter((t) => t.status === 'pending').length;
+  const pending = tasks.filter((t) => t.status !== 'completed').length;
   const completionPercentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   const stats = [
     {
+      id: 'all' as TaskFilter,
       title: 'Total Tasks',
       value: total,
       subtext: 'Saved in Firestore',
@@ -22,8 +25,10 @@ export const StatCards: React.FC<StatCardsProps> = ({ tasks }) => {
       bgColor: 'bg-purple-50/70',
       textColor: 'text-purple-700',
       badge: 'All Active',
+      clickable: true,
     },
     {
+      id: 'pending' as TaskFilter,
       title: 'Pending Tasks',
       value: pending,
       subtext: 'Needs attention',
@@ -32,8 +37,10 @@ export const StatCards: React.FC<StatCardsProps> = ({ tasks }) => {
       bgColor: 'bg-amber-50/70',
       textColor: 'text-amber-700',
       badge: 'In Progress',
+      clickable: true,
     },
     {
+      id: 'completed' as TaskFilter,
       title: 'Completed',
       value: completed,
       subtext: 'Marked as done',
@@ -42,16 +49,19 @@ export const StatCards: React.FC<StatCardsProps> = ({ tasks }) => {
       bgColor: 'bg-emerald-50/70',
       textColor: 'text-emerald-700',
       badge: 'Finished',
+      clickable: true,
     },
     {
+      id: 'completed' as TaskFilter,
       title: 'Completion Rate',
       value: `${completionPercentage}%`,
-      subtext: `${completed} of ${total} finished`,
+      subtext: `${completed} of ${total} finished (View done)`,
       icon: TrendingUp,
       accentColor: 'from-violet-600 to-purple-600',
       bgColor: 'bg-violet-50/70',
       textColor: 'text-violet-700',
       progress: completionPercentage,
+      clickable: true,
     },
   ];
 
@@ -59,10 +69,22 @@ export const StatCards: React.FC<StatCardsProps> = ({ tasks }) => {
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
       {stats.map((stat, idx) => {
         const Icon = stat.icon;
+        const isCurrentActive = stat.id && currentFilter === stat.id;
         return (
           <div
             key={idx}
-            className="p-4 sm:p-5 rounded-2xl bg-white border border-purple-100 shadow-xs hover:shadow-md transition-shadow relative overflow-hidden"
+            onClick={() => {
+              if (stat.clickable && stat.id && onSelectFilter) {
+                onSelectFilter(stat.id);
+              }
+            }}
+            className={`p-4 sm:p-5 rounded-2xl bg-white border transition-all duration-150 relative overflow-hidden ${
+              stat.clickable ? 'cursor-pointer hover:border-purple-300 hover:shadow-md' : 'shadow-xs'
+            } ${
+              isCurrentActive
+                ? 'border-purple-500 ring-2 ring-purple-400/30 shadow-xs'
+                : 'border-purple-100'
+            }`}
           >
             <div className="flex items-start justify-between gap-2 mb-3">
               <span className="text-xs sm:text-sm font-medium text-slate-500">{stat.title}</span>

@@ -45,7 +45,8 @@ export const TaskCard: React.FC<TaskCardProps> = ({
     },
   };
 
-  const currentPriority = priorityConfig[task.priority] || priorityConfig.medium;
+  const normalizedPriority = (String(task.priority || '').trim().toLowerCase() as Priority) || 'medium';
+  const currentPriority = priorityConfig[normalizedPriority] || priorityConfig.medium;
 
   // Due Date Helper
   const getDueStatus = (dueDateStr: string) => {
